@@ -32,6 +32,27 @@ class TodoBot:
         self.bot.reply_to(message, task_list)
         self.send_buttons(message)
 
+    def handle_update(self, message):
+        self.bot.reply_to(message, "Введите номер задачи, которую хотите обновить:")
+        self.bot.register_next_step_handler(message, self.update_task)
+
+    def update_task(self, message):
+        try:
+            task_index = int(message.text) - 1
+            if 0 <= task_index < len(self.tasks):
+                self.bot.reply_to(message, f"Введите новое значение для задачи \"{self.tasks[task_index]}\":")
+                self.bot.register_next_step_handler(message, self.process_update, task_index)
+            else:
+                self.bot.reply_to(message, "Неверный номер задачи.")
+        except ValueError:
+            self.bot.reply_to(message, "Неверный номер задачи. Введите число.")
+
+    def process_update(self, message, task_index):
+        new_task = message.text
+        self.tasks[task_index] = new_task
+        self.bot.reply_to(message, "Задача успешно обновлена!")
+        self.send_buttons(message)
+
     def handle_delete(self, message):
         self.bot.reply_to(message, "Введите номер задачи, которую хотите удалить:")
         self.bot.register_next_step_handler(message, self.delete_task)
@@ -56,8 +77,9 @@ class TodoBot:
         keyboard = types.InlineKeyboardMarkup()
         add_button = types.InlineKeyboardButton("Добавить задачу", callback_data="add")
         show_button = types.InlineKeyboardButton("Показать задачи", callback_data="show")
+        update_button = types.InlineKeyboardButton("Обновить задачу", callback_data="update")
         delete_button = types.InlineKeyboardButton("Удалить задачу", callback_data="delete")
-        keyboard.add(add_button, show_button, delete_button)
+        keyboard.add(add_button, show_button, update_button, delete_button)
         self.bot.send_message(message.chat.id, "Выберите действие:", reply_markup=keyboard)
 
 
@@ -79,6 +101,9 @@ def handle_button_click(call):
     elif call.data == "show":
         my_bot.bot.answer_callback_query(call.id)
         my_bot.handle_tasks(call.message)
+    elif call.data == "update":
+        my_bot.bot.answer_callback_query(call.id)
+        my_bot.handle_update(call.message)
     elif call.data == "delete":
         my_bot.bot.answer_callback_query(call.id)
         my_bot.handle_delete(call.message)
